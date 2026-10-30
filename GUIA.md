@@ -89,7 +89,8 @@ O instalador agenda tudo e o bot manda "Tudo pronto" com os horários. Pronto!
 
 - Toque no texto do comentário para copiar e cole no LinkedIn.
 - Em cada tarefa, toque em **✅ Feito** ou **⏭ Pular**. É assim que o resumo da semana é contado.
-- O computador precisa estar **ligado, com a sua sessão do Windows aberta** nesses horários. Para a etapa de conectar, deixe o **Chrome aberto**.
+- Se o computador estiver **desligado ou dormindo** no horário, o robô roda assim que você ligar e entrar no Windows (cada momento roda no máximo uma vez por dia). Funciona também na bateria.
+- Se o Chrome estiver fechado quando o robô precisar dele, ele abre o Chrome sozinho.
 
 ### Comandos no Telegram
 - `/pausar`: o robô para de mandar tarefas (por exemplo, nas férias).

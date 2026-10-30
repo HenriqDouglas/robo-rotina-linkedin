@@ -172,6 +172,30 @@ FERRAMENTAS_CHROME = ",".join(f"mcp__claude-in-chrome__{t}" for t in
 CHROME = ["--chrome", "--tools", "", "--allowedTools", FERRAMENTAS_CHROME]
 
 
+def abrir_chrome():
+    """A extensão Claude só responde com o Chrome aberto: se estiver fechado, abre e espera ela conectar."""
+    r = subprocess.run(["tasklist", "/FI", "IMAGENAME eq chrome.exe", "/NH"], capture_output=True, text=True,
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    if "chrome.exe" in r.stdout.lower():
+        return
+    import winreg
+    exe = None
+    for raiz in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+        try:
+            exe = winreg.QueryValue(raiz, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe")
+            break
+        except OSError:
+            pass
+    locais = [Path(os.environ.get(v, "")) / "Google/Chrome/Application/chrome.exe"
+              for v in ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA")]
+    exe = exe or next((str(p) for p in locais if p.exists()), None)
+    if not exe:
+        raise RuntimeError("não encontrei o Google Chrome instalado")
+    log("Chrome estava fechado; abrindo")
+    subprocess.Popen([exe])
+    time.sleep(20)
+
+
 def pausar(tg: Telegram, motivo: str):
     (BASE / "PAUSADO").write_text(motivo, encoding="utf-8")
     log(f"pausado: {motivo}")
@@ -317,6 +341,7 @@ def checar(alvo: str, cfg, env, tg):
     if alvo == "claude":
         claude("Reply with ok=true.", {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]}, cfg)
     elif alvo == "chrome":
+        abrir_chrome()
         res = claude("Call tabs_context_mcp once (create a tab if it asks you to). Do not open any page. "
                      "Return ok=true if the browser answered, and in `detalhe` what happened.",
                      {"type": "object", "properties": {"ok": {"type": "boolean"}, "detalhe": {"type": "string"}},
@@ -414,6 +439,7 @@ def configurar(cfg, db, env, tg, dry=False):
         conv.dizer("Não reconheci o link. Ele tem o formato linkedin.com/in/seu-nome.")
     url = f"https://www.linkedin.com/in/{m.group(1)}/"
     conv.dizer("🔎 Lendo o seu perfil no Chrome. Leva alguns minutos, pode deixar o Chrome aberto.")
+    abrir_chrome()
     lido = claude(montar_prompt("prompts/ler_perfil.md", PERFIL_URL=url), SCHEMA_LEITURA, cfg, extra=CHROME)
     if lido["bloqueado"]:
         raise RuntimeError("o LinkedIn bloqueou a leitura do perfil: " + lido.get("alerta", ""))
@@ -625,6 +651,7 @@ def conectar(cfg, db, env, tg, perfil, dry=False):
     ja = [r["url"] for r in db.execute("SELECT url FROM pessoas")]
     prompt = montar_prompt("prompts/pessoas.md", perfil, MAX_PAGINAS=pc["max_paginas_por_grupo"],
                            GRUPOS="\n".join(blocos), JA_SUGERIDOS="\n".join(ja) or "(none)")
+    abrir_chrome()
     res = claude(prompt, SCHEMA_PESSOAS, cfg, extra=CHROME)
     vistos = set(ja)
     for g in pc["grupos"]:
@@ -874,6 +901,10 @@ def main():
         if not perfil:
             log(f"{a.momento}: robô ainda não configurado (falta dados/perfil.json); rode o configurar")
             return
+        # horário perdido (PC desligado) roda ao ligar; isso evita repetir o mesmo momento no dia
+        if a.momento in MOMENTOS and not a.dry_run and kv_get(db, f"rodou_{a.momento}") == date.today().isoformat():
+            log(f"{a.momento}: já rodou hoje")
+            return
     try:
         if a.momento == "checar":
             return checar(a.alvo, cfg, env, tg)
@@ -897,7 +928,8 @@ def main():
                       f"• Seg a sex {h['responder']}: responder\n"
                       f"• {h['publicar_dias']} {h['publicar']}: post\n"
                       f"• {h['resumo_dia']} {h['resumo']}: resumo da semana\n\n"
-                      "O computador precisa estar ligado, com a sua sessão do Windows aberta e o Chrome aberto nesses horários.\n"
+                      "Se o computador estiver desligado no horário, o robô roda assim que você ligar e entrar no Windows. "
+                      "O Chrome é aberto sozinho quando precisar.\n"
                       + COMANDOS)
         elif a.momento == "coleta":
             coleta(cfg, db, env, a.dry_run)
@@ -908,6 +940,8 @@ def main():
                 print(f"tarefas {r['tipo']}/{r['status']}: {r['n']}")
         else:
             MOMENTOS[a.momento](cfg, db, env, tg, perfil, a.dry_run)
+            if not a.dry_run:
+                kv_set(db, f"rodou_{a.momento}", date.today().isoformat())
         log(f"{a.momento}: ok")
     except Exception as e:
         log(f"{a.momento}: ERRO {e!r}")

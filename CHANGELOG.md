@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.0.3 · 2026-10-30
+- Se o PC estiver desligado ou dormindo no horário, o robô roda assim que você ligar (no máximo uma vez por dia por momento)
+- Funciona também na bateria
+- Se o Chrome estiver fechado, o robô abre sozinho quando precisar dele
+
 ## 1.0.2 · 2026-10-30
 - Corrige o reinício depois da atualização: o robô agora religa sozinho com a versão nova e confirma no Telegram
 

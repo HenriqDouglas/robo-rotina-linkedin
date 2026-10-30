@@ -21,12 +21,16 @@ $tarefas = @(
   @{ nome = "publicar";        dias = $h.publicar_dias;      hora = $h.publicar },
   @{ nome = "resumo";          dias = $h.resumo_dia;         hora = $h.resumo }
 )
+$conf = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+  -ExecutionTimeLimit (New-TimeSpan -Hours 2)
 foreach ($t in $tarefas) {
   $tn = "RoboLinkedIn\$($t.nome)"
   schtasks /Delete /TN $tn /F 2>$null | Out-Null
   if (-not $Remover) {
     $cmd = "`"$pyw`" `"$dir\robo.py`" $($t.nome)"
     schtasks /Create /TN $tn /TR $cmd /SC WEEKLY /D $t.dias /ST $t.hora /F | Out-Null
+    # PC desligado ou dormindo no horário: roda assim que ligar. Também roda na bateria (notebook).
+    Set-ScheduledTask -TaskPath "\RoboLinkedIn\" -TaskName $t.nome -Settings $conf | Out-Null
     Write-Output "agendado: $tn  $($t.dias) $($t.hora)"
   } else { Write-Output "removido: $tn" }
 }
@@ -41,6 +45,9 @@ schtasks /Delete /TN $tn /F 2>$null | Out-Null
 if (-not $Remover) {
   $cmd = "`"$pyw`" `"$dir\robo.py`" escutar"
   schtasks /Create /TN $tn /TR $cmd /SC MINUTE /MO 10 /F | Out-Null
+  # o ouvinte roda sem limite de tempo e também na bateria
+  Set-ScheduledTask -TaskPath "\RoboLinkedIn\" -TaskName "ouvinte" -Settings (New-ScheduledTaskSettingsSet `
+    -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)) | Out-Null
   schtasks /Run /TN $tn | Out-Null
   Write-Output "agendado: $tn  a cada 10 min (liga o ouvinte se estiver desligado)"
 } else {
