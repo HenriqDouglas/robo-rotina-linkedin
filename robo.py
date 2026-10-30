@@ -749,6 +749,9 @@ AJUDA = ("ℹ️ <b>Comandos</b>\n"
          "O robô só sugere; curtir, comentar, conectar e publicar é sempre com você.")
 
 
+REINICIAR = False  # depois de atualizar, o ouvinte com o código antigo se encerra
+
+
 def atualizar_agora(tg: Telegram, db, cfg, esperar: bool = False) -> bool:
     """Confere o GitHub e, se houver versão nova, troca o código e religa o robô."""
     try:
@@ -762,9 +765,14 @@ def atualizar_agora(tg: Telegram, db, cfg, esperar: bool = False) -> bool:
         log(f"atualizar: ERRO {e!r}")
         tg.enviar(f"❌ A atualização não deu certo e nada foi trocado.\n<code>{esc(str(e)[:500])}</code>")
         return False
+    global REINICIAR
     kv_set(db, "atualizacao_pendente", info["versao"])
-    tg.enviar("Arquivos atualizados. Religando o robô; em 1 minuto chega a confirmação.")
-    atualizar.reiniciar(BASE, esperar)
+    tg.enviar("Arquivos atualizados. Religando o robô; a confirmação chega em alguns minutos.")
+    try:
+        atualizar.reiniciar(BASE, esperar)
+    except Exception as e:  # o ouvinte se encerra mesmo assim e a tarefa o religa com o código novo
+        log(f"atualizar: não consegui disparar o agendar.ps1: {e!r}")
+    REINICIAR = True
     return True
 
 
@@ -822,6 +830,9 @@ def escutar(cfg, db, env, tg):
                     tg.enviar("▶️ Robô religado.")
                 else:  # /ajuda, /start ou qualquer outro texto
                     tg.enviar(AJUDA)
+            if REINICIAR:  # a tarefa RoboLinkedIn\ouvinte liga a cópia nova em até 10 minutos, se o agendar.ps1 não ligar antes
+                log("ouvinte: encerrando para rodar o código novo")
+                return
         except Exception as e:
             log(f"ouvinte: erro {e!r}")
             time.sleep(30)

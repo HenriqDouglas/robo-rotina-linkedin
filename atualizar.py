@@ -113,10 +113,14 @@ def reiniciar(base: Path, esperar: bool = False):
             "-File", str(base / "agendar.ps1")]
     if esperar:
         subprocess.run(args)
-    else:
-        # processo solto: continua mesmo quando o agendar.ps1 encerra o ouvinte que o chamou
-        subprocess.Popen(args, close_fds=True, creationflags=getattr(subprocess, "DETACHED_PROCESS", 0)
-                         | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+        return
+    # processo próprio, fora do grupo de tarefas do Agendador: continua quando o agendar.ps1 encerra o ouvinte
+    # (DETACHED_PROCESS não serve: sem console o PowerShell nem inicia quando chamado pelo pythonw)
+    flags = SEM_JANELA | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    try:
+        subprocess.Popen(args, close_fds=True, creationflags=flags | getattr(subprocess, "CREATE_BREAKAWAY_FROM_JOB", 0))
+    except OSError:  # o Agendador pode não permitir sair do grupo; ainda assim o ouvinte se encerra e é religado
+        subprocess.Popen(args, close_fds=True, creationflags=flags)
 
 
 if __name__ == "__main__":
