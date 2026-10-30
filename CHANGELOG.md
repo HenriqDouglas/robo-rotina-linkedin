@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 1.0.1 · 2026-10-30
+- Novo comando /ajuda, que explica cada comando do bot
+
 ## 1.0.0 · 2026-10-30
 - Primeira versão: rotina diária (curtir, comentar, conectar, responder, publicar, resumo) enviada no Telegram.
 - Personalização pelo Telegram a partir do perfil do LinkedIn.

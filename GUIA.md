@@ -95,7 +95,7 @@ O instalador agenda tudo e o bot manda "Tudo pronto" com os horários. Pronto!
 - `/pausar`: o robô para de mandar tarefas (por exemplo, nas férias).
 - `/religar`: volta ao normal.
 - `/configurar`: refaz a personalização (mudou de objetivo, idioma ou tem resultados novos).
-- `/atualizar`: instala a versão mais nova do robô, se houver. `/versao`: mostra a versão instalada.
+- `/atualizar`: instala a versão mais nova do robô, se houver. `/versao`: mostra a versão instalada. `/ajuda`: lista os comandos.
 
 ### Mudar horários ou metas
 Abra `dados\config-local.json` no Bloco de Notas e acrescente o que quer mudar, por exemplo:

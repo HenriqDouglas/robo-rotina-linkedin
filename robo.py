@@ -738,7 +738,15 @@ def resumo(cfg, db, env, tg, perfil, dry=False):
     tg.enviar("\n".join(texto))
 
 
-COMANDOS = "Comandos: /pausar · /religar · /configurar · /atualizar · /versao"
+COMANDOS = "Comandos: /pausar · /religar · /configurar · /atualizar · /versao · /ajuda"
+AJUDA = ("ℹ️ <b>Comandos</b>\n"
+         "/pausar: para de mandar tarefas (férias, por exemplo)\n"
+         "/religar: volta ao normal\n"
+         "/configurar: refaz a personalização a partir do seu perfil\n"
+         "/atualizar: instala a versão mais nova do robô, se houver\n"
+         "/versao: mostra a versão instalada\n\n"
+         "Nas tarefas, toque em ✅ Feito ou ⏭ Pular: é assim que o resumo da semana é contado.\n"
+         "O robô só sugere; curtir, comentar, conectar e publicar é sempre com você.")
 
 
 def atualizar_agora(tg: Telegram, db, cfg, esperar: bool = False) -> bool:
@@ -812,8 +820,8 @@ def escutar(cfg, db, env, tg):
                 elif comando == "/religar":
                     (BASE / "PAUSADO").unlink(missing_ok=True)
                     tg.enviar("▶️ Robô religado.")
-                else:
-                    tg.enviar(COMANDOS + "\nPara marcar tarefas, use os botões ✅ Feito / ⏭ Pular.")
+                else:  # /ajuda, /start ou qualquer outro texto
+                    tg.enviar(AJUDA)
         except Exception as e:
             log(f"ouvinte: erro {e!r}")
             time.sleep(30)
