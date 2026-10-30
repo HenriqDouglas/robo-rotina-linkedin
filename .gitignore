@@ -1,0 +1,12 @@
+.env
+dados/*
+!dados/.gitkeep
+estado.sqlite
+logs/*
+!logs/.gitkeep
+python.txt
+PAUSADO
+backup/
+__pycache__/
+*.zip
+.verificar-privado.txt

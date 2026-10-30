@@ -1,0 +1,37 @@
+{
+  "repositorio": "HenriqDouglas/robo-rotina-linkedin",
+  "metas": {
+    "curtir_por_dia": 10,
+    "comentar_por_dia": 5,
+    "posts_por_semana": 2,
+    "conectar_recrutadores": 10,
+    "conectar_area": 10
+  },
+  "coleta": {
+    "actor": "apimaestro~linkedin-posts-search-scraper-no-cookies",
+    "keywords": [],
+    "posts_por_keyword": 8,
+    "sort_type": "relevance",
+    "date_filter": "past-24h",
+    "max_idade_horas": 48,
+    "min_caracteres": 200
+  },
+  "pessoas": {
+    "grupos": [],
+    "max_paginas_por_grupo": 3
+  },
+  "claude": {
+    "modelo": "sonnet",
+    "timeout_s": 900
+  },
+  "porta_trava": 47831,
+  "horarios": {
+    "curtir_comentar": "08:30",
+    "conectar": "12:30",
+    "responder": "18:00",
+    "publicar": "07:45",
+    "publicar_dias": "TUE,THU",
+    "resumo": "18:30",
+    "resumo_dia": "FRI"
+  }
+}
