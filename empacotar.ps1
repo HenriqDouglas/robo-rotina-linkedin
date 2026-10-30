@@ -2,7 +2,7 @@
 # Rode: powershell -ExecutionPolicy Bypass -File empacotar.ps1  (o publicar-versao.ps1 já chama este script)
 $ErrorActionPreference = "Stop"
 $dir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$itens = @("robo.py", "telegram.py", "apify.py", "atualizar.py", "config.json", "versao.txt", "requirements.txt",
+$itens = @("robo.py", "telegram.py", "apify.py", "atualizar.py", "navegador.py", "ENTRAR-LINKEDIN.cmd", "config.json", "versao.txt", "requirements.txt",
            "agendar.ps1", "instalar.ps1", "INSTALAR.cmd", "ATUALIZAR.cmd", "GUIA.md", "ROTINA.md", "LEIA-ME.md",
            "CHANGELOG.md", "prompts")
 $tmp = Join-Path $env:TEMP "robo-linkedin-pacote"

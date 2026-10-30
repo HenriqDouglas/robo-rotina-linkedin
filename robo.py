@@ -25,6 +25,7 @@ from pathlib import Path
 
 import apify
 import atualizar
+import navegador
 from telegram import Telegram, esc
 
 BASE = Path(__file__).resolve().parent
@@ -70,6 +71,32 @@ def gravar_env(chave: str, valor):
 
 def ler(caminho: str) -> str:
     return (BASE / caminho).read_text(encoding="utf-8-sig")
+
+
+def criar_instancia(nome: str | None):
+    """Grava em dados/config-local.json o que separa este robô de outro no mesmo PC."""
+    import socket
+    slug = re.sub(r"[^a-z0-9]+", "-", (nome or "").lower()).strip("-")
+    if not slug:
+        raise SystemExit("use: python robo.py instancia <nome>")
+    porta = next(p for p in range(47832, 47900) if _porta_livre(socket, p))
+    arq = DADOS / "config-local.json"
+    DADOS.mkdir(exist_ok=True)
+    local = json.loads(arq.read_text(encoding="utf-8-sig")) if arq.exists() else {}
+    local.update({"instancia": f"RoboLinkedIn-{slug}", "porta_trava": porta, "navegador": "proprio"})
+    arq.write_text(json.dumps(local, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"instância RoboLinkedIn-{slug}, porta {porta}, Chrome próprio")
+
+
+def _porta_livre(socket, porta: int) -> bool:
+    s = socket.socket()
+    try:
+        s.bind(("127.0.0.1", porta))
+        return True
+    except OSError:
+        return False
+    finally:
+        s.close()
 
 
 def _juntar(base: dict, local: dict) -> dict:
@@ -170,6 +197,25 @@ FERRAMENTAS_CHROME = ",".join(f"mcp__claude-in-chrome__{t}" for t in
                               ("tabs_context_mcp", "tabs_create_mcp", "tabs_close_mcp", "navigate",
                                "read_page", "find", "get_page_text"))
 CHROME = ["--chrome", "--tools", "", "--allowedTools", FERRAMENTAS_CHROME]
+
+
+NAVEGADOR = BASE / "navegador"  # perfil do Chrome próprio do robô (modo "proprio")
+
+
+def navegador_proprio(cfg) -> bool:
+    """"proprio": Chrome separado com o LinkedIn da pessoa (ex.: segundo robô no mesmo PC).
+    "extensao" (padrão): o Chrome de todo dia, pela extensão Claude."""
+    return cfg.get("navegador") == "proprio"
+
+
+def ler_no_navegador(tg: Telegram, paginas: list[dict]) -> str:
+    try:
+        lidas = navegador.ler_paginas(NAVEGADOR, paginas, log)
+    except navegador.LoginNecessario:
+        tg.enviar("🔑 <b>O LinkedIn pediu login no Chrome do robô.</b>\n"
+                  "No computador do robô, dê duplo clique em ENTRAR-LINKEDIN.cmd e entre na sua conta.")
+        raise RuntimeError("LinkedIn sem login no Chrome do robô (rode ENTRAR-LINKEDIN.cmd)")
+    return json.dumps(lidas, ensure_ascii=False, indent=1)
 
 
 def abrir_chrome():
@@ -340,6 +386,9 @@ def checar(alvo: str, cfg, env, tg):
     """Testes da instalação: claude, chrome, apify ou telegram."""
     if alvo == "claude":
         claude("Reply with ok=true.", {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]}, cfg)
+    elif alvo == "chrome" and navegador_proprio(cfg):
+        if not navegador.logado(NAVEGADOR):
+            raise RuntimeError("o LinkedIn não está logado no Chrome do robô: rode ENTRAR-LINKEDIN.cmd")
     elif alvo == "chrome":
         abrir_chrome()
         res = claude("Call tabs_context_mcp once (create a tab if it asks you to). Do not open any page. "
@@ -439,8 +488,14 @@ def configurar(cfg, db, env, tg, dry=False):
         conv.dizer("Não reconheci o link. Ele tem o formato linkedin.com/in/seu-nome.")
     url = f"https://www.linkedin.com/in/{m.group(1)}/"
     conv.dizer("🔎 Lendo o seu perfil no Chrome. Leva alguns minutos, pode deixar o Chrome aberto.")
-    abrir_chrome()
-    lido = claude(montar_prompt("prompts/ler_perfil.md", PERFIL_URL=url), SCHEMA_LEITURA, cfg, extra=CHROME)
+    if navegador_proprio(cfg):
+        detalhes = ["", "details/experience/", "details/skills/", "details/education/",
+                    "details/certifications/", "details/languages/"]
+        paginas = ler_no_navegador(tg, [{"url": url + x} for x in detalhes])
+        lido = claude(montar_prompt("prompts/ler_perfil_paginas.md", PAGINAS=paginas), SCHEMA_LEITURA, cfg)
+    else:
+        abrir_chrome()
+        lido = claude(montar_prompt("prompts/ler_perfil.md", PERFIL_URL=url), SCHEMA_LEITURA, cfg, extra=CHROME)
     if lido["bloqueado"]:
         raise RuntimeError("o LinkedIn bloqueou a leitura do perfil: " + lido.get("alerta", ""))
     DADOS.mkdir(exist_ok=True)
@@ -635,7 +690,7 @@ SCHEMA_PESSOAS = {
 
 def conectar(cfg, db, env, tg, perfil, dry=False):
     pc = cfg["pessoas"]
-    blocos = []
+    blocos, paginas = [], []
     for g in pc["grupos"]:
         pagina = int(kv_get(db, f"pagina_{g['nome']}", 1))
         urls = []
@@ -646,13 +701,22 @@ def conectar(cfg, db, env, tg, perfil, dry=False):
             urls.append("https://www.linkedin.com/search/results/people/?" + urllib.parse.urlencode(q))
         if not dry:
             kv_set(db, f"pagina_{g['nome']}", 1 if pagina >= 20 else pagina + pc["max_paginas_por_grupo"])
-        blocos.append(f"- group \"{g['nome']}\": target {g['qtd']} people. Who: {g['descricao']}\n"
-                      + "\n".join(f"  {u}" for u in urls))
+        if navegador_proprio(cfg):  # o robô lê as páginas no Chrome dele e a IA só escolhe, sem ferramentas
+            blocos.append(f"- group \"{g['nome']}\": target {g['qtd']} people. Who: {g['descricao']}")
+            paginas += [{"grupo": g["nome"], "url": u} for u in urls]
+        else:
+            blocos.append(f"- group \"{g['nome']}\": target {g['qtd']} people. Who: {g['descricao']}\n"
+                          + "\n".join(f"  {u}" for u in urls))
     ja = [r["url"] for r in db.execute("SELECT url FROM pessoas")]
-    prompt = montar_prompt("prompts/pessoas.md", perfil, MAX_PAGINAS=pc["max_paginas_por_grupo"],
-                           GRUPOS="\n".join(blocos), JA_SUGERIDOS="\n".join(ja) or "(none)")
-    abrir_chrome()
-    res = claude(prompt, SCHEMA_PESSOAS, cfg, extra=CHROME)
+    if navegador_proprio(cfg):
+        prompt = montar_prompt("prompts/pessoas_paginas.md", perfil, GRUPOS="\n".join(blocos),
+                               JA_SUGERIDOS="\n".join(ja) or "(none)", PAGINAS=ler_no_navegador(tg, paginas))
+        res = claude(prompt, SCHEMA_PESSOAS, cfg)
+    else:
+        prompt = montar_prompt("prompts/pessoas.md", perfil, MAX_PAGINAS=pc["max_paginas_por_grupo"],
+                               GRUPOS="\n".join(blocos), JA_SUGERIDOS="\n".join(ja) or "(none)")
+        abrir_chrome()
+        res = claude(prompt, SCHEMA_PESSOAS, cfg, extra=CHROME)
     vistos = set(ja)
     for g in pc["grupos"]:
         lista = []
@@ -875,7 +939,8 @@ def main():
             stream.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
     ap.add_argument("momento", choices=["vincular", "definir", "checar", "configurar", "teste", "pronto", "coleta",
-                                        "status", "escutar", "config", "versao", "atualizar", *MOMENTOS])
+                                        "status", "escutar", "config", "versao", "atualizar", "entrar", "instancia",
+                                        *MOMENTOS])
     ap.add_argument("alvo", nargs="?", help="checar: claude|chrome|apify|telegram · definir: nome da chave")
     ap.add_argument("--dry-run", action="store_true", help="imprime na tela em vez de enviar ao Telegram")
     a = ap.parse_args()
@@ -885,6 +950,13 @@ def main():
         return print(json.dumps(carregar_config(), ensure_ascii=False))
     if a.momento == "versao":
         return print(atualizar.versao_local(BASE))
+    if a.momento == "instancia":  # segundo robô no mesmo PC: nome próprio, porta própria e Chrome próprio
+        return criar_instancia(a.alvo)
+    if a.momento == "entrar":  # ENTRAR-LINKEDIN.cmd: login no Chrome próprio do robô
+        print("Abrindo o Chrome do robô. Entre na conta do LinkedIn (senha e código, se pedir). Espero até 15 min.")
+        ok = navegador.entrar(NAVEGADOR)
+        print("Login feito. Pode fechar esta janela." if ok else "Não vi o login terminar. Rode de novo.")
+        return None if ok else sys.exit(1)
     env = carregar_env()
     cfg = carregar_config()
     db = abrir_db()

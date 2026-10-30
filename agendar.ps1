@@ -13,6 +13,7 @@ $pyw = Join-Path (Split-Path -Parent $py) "pythonw.exe"
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 $cfg = (& $py "$dir\robo.py" config) -join "" | ConvertFrom-Json
 $h = $cfg.horarios
+$pasta = $cfg.instancia  # "RoboLinkedIn" ou, num segundo robô no mesmo PC, "RoboLinkedIn-<nome>"
 
 $tarefas = @(
   @{ nome = "curtir_comentar"; dias = "MON,TUE,WED,THU,FRI"; hora = $h.curtir_comentar },
@@ -24,20 +25,20 @@ $tarefas = @(
 $conf = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
   -ExecutionTimeLimit (New-TimeSpan -Hours 2)
 foreach ($t in $tarefas) {
-  $tn = "RoboLinkedIn\$($t.nome)"
+  $tn = "$pasta\$($t.nome)"
   schtasks /Delete /TN $tn /F 2>$null | Out-Null
   if (-not $Remover) {
     $cmd = "`"$pyw`" `"$dir\robo.py`" $($t.nome)"
     schtasks /Create /TN $tn /TR $cmd /SC WEEKLY /D $t.dias /ST $t.hora /F | Out-Null
     # PC desligado ou dormindo no horário: roda assim que ligar. Também roda na bateria (notebook).
-    Set-ScheduledTask -TaskPath "\RoboLinkedIn\" -TaskName $t.nome -Settings $conf | Out-Null
+    Set-ScheduledTask -TaskPath "\$pasta\" -TaskName $t.nome -Settings $conf | Out-Null
     Write-Output "agendado: $tn  $($t.dias) $($t.hora)"
   } else { Write-Output "removido: $tn" }
 }
 
 # Ouvinte: confirma os botões e lê os comandos do Telegram na hora. A tarefa tenta ligá-lo a cada 10 minutos;
 # se já estiver ligado, a cópia nova fecha sozinha.
-$tn = "RoboLinkedIn\ouvinte"
+$tn = "$pasta\ouvinte"
 Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" |
   Where-Object { $_.CommandLine -like "*$dir*robo.py*escutar*" } |
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
@@ -46,7 +47,7 @@ if (-not $Remover) {
   $cmd = "`"$pyw`" `"$dir\robo.py`" escutar"
   schtasks /Create /TN $tn /TR $cmd /SC MINUTE /MO 10 /F | Out-Null
   # o ouvinte roda sem limite de tempo e também na bateria
-  Set-ScheduledTask -TaskPath "\RoboLinkedIn\" -TaskName "ouvinte" -Settings (New-ScheduledTaskSettingsSet `
+  Set-ScheduledTask -TaskPath "\$pasta\" -TaskName "ouvinte" -Settings (New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)) | Out-Null
   schtasks /Run /TN $tn | Out-Null
   Write-Output "agendado: $tn  a cada 10 min (liga o ouvinte se estiver desligado)"

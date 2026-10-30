@@ -17,7 +17,8 @@ from pathlib import Path
 import requests
 
 ASSET = "robo-linkedin.zip"
-PROTEGIDOS = {".env", "dados", "estado.sqlite", "logs", "python.txt", "PAUSADO", "backup", "__pycache__", ".git"}
+PROTEGIDOS = {".env", "dados", "estado.sqlite", "logs", "python.txt", "PAUSADO", "backup", "navegador",
+              "__pycache__", ".git"}
 SEM_JANELA = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 

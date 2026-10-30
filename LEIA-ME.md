@@ -8,6 +8,7 @@ O robô varre posts (Apify) e pessoas (seu Chrome, só leitura) e manda no Teleg
 - `robo.py`: o robô (`python robo.py <momento> [--dry-run]`).
 - `config.json`: padrões (metas, horários, repositório de atualização). Vem nas atualizações; não edite.
 - `dados/config-local.json`: ajustes da pessoa (temas da coleta, grupos de pessoas e o que quiser sobrescrever do `config.json`).
+- `navegador.py` + `ENTRAR-LINKEDIN.cmd`: Chrome próprio do robô (`"navegador": "proprio"`), usado quando há mais de um robô no mesmo PC. A pasta `navegador/` guarda o login e nunca vai para o git.
 - `atualizar.py` + `versao.txt`: atualização pelo GitHub Releases (`/atualizar` no Telegram ou `ATUALIZAR.cmd`).
 - `dados/`: gerado na personalização. Contém `perfil.json`, `voice-profile.md` (sua voz), `story-bank.md` (suas histórias e números; o robô só usa números daqui) e `mensagens.json` (modelos pós-aceite). Pode editar à mão.
 - `prompts/`: instruções da IA. `prompts/ref/` vem do linkedin-skills (MIT).

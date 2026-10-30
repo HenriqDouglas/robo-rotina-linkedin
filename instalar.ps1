@@ -43,6 +43,20 @@ if (-not $py) {
 & $py -m pip install --user --quiet --disable-pip-version-check -r "$dir\requirements.txt"
 Ok "Python em $py"
 
+# Segundo robô no mesmo PC: nome próprio para as tarefas, porta própria e um Chrome só dele
+$outros = Get-ScheduledTask -ErrorAction SilentlyContinue |
+  Where-Object { $_.TaskPath -like "\RoboLinkedIn*" -and $_.TaskName -eq "ouvinte" -and "$($_.Actions.Arguments)" -notlike "*$dir*" }
+$local = "$dir\dados\config-local.json"
+if ($outros -and -not ((Test-Path $local) -and (Select-String -Path $local -Pattern '"instancia"' -Quiet))) {
+  Aviso "Já existe outro robô do LinkedIn neste computador. Este vai ter tarefas, ouvinte e Chrome separados."
+  $nome = (Read-Host "  Um nome curto para este robô (ex.: maria)").Trim()
+  if ((Robo instancia $nome) -ne 0) { throw "Não consegui separar este robô do outro." }
+}
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$cfgAtual = (& $py "$dir\robo.py" config) -join "" | ConvertFrom-Json
+$proprio = $cfgAtual.navegador -eq "proprio"
+if ($proprio) { & $py -m pip install --user --quiet --disable-pip-version-check playwright }
+
 # 2. Claude Code
 Titulo "2/7 Claude Code"
 AtualizarPath
@@ -59,7 +73,16 @@ if ((Robo checar claude) -ne 0) {
 }
 Ok "Claude Code respondendo"
 
-# 3. Chrome + extensão Claude
+# 3. Chrome
+if ($proprio) {
+  Titulo "3/7 Chrome do robô (separado do seu)"
+  if ((Robo checar chrome) -ne 0) {
+    Aviso "Vai abrir um Chrome só deste robô. A pessoa dona da conta entra no LinkedIn dela nele (senha e código)."
+    Aviso "Quando aparecer o feed do LinkedIn, a janela fecha sozinha."
+    if ((Robo entrar) -ne 0) { throw "O login não terminou. Rode de novo." }
+  }
+  Ok "LinkedIn logado no Chrome do robô"
+} else {
 Titulo "3/7 Chrome com a extensão Claude"
 if ((Robo checar chrome) -ne 0) {
   Aviso "1) No Chrome, instale a extensão 'Claude' (da Anthropic) e entre com a mesma conta Claude."
@@ -69,6 +92,7 @@ if ((Robo checar chrome) -ne 0) {
   if ((Robo checar chrome) -ne 0) { throw "O Chrome ainda não respondeu. Veja o passo 3 do GUIA.md e rode de novo." }
 }
 Ok "Chrome conectado"
+}
 
 # 4. Telegram
 Titulo "4/7 Telegram"

@@ -1,5 +1,7 @@
 {
   "repositorio": "HenriqDouglas/robo-rotina-linkedin",
+  "instancia": "RoboLinkedIn",
+  "navegador": "extensao",
   "metas": {
     "curtir_por_dia": 10,
     "comentar_por_dia": 5,

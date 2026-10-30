@@ -10,3 +10,4 @@ backup/
 __pycache__/
 *.zip
 .verificar-privado.txt
+navegador/

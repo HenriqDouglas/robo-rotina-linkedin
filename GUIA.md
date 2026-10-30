@@ -112,6 +112,21 @@ Não mexa no `config.json`: ele traz os padrões e é trocado nas atualizações
 
 ---
 
+## Segundo robô no mesmo computador
+Dá para rodar o robô de outra pessoa no mesmo PC. Ela usa o Telegram dela e o LinkedIn dela, e um robô não interfere no outro.
+
+1. Descompacte o `robo-linkedin.zip` numa **outra pasta** (ex.: `Documentos\robo-linkedin-maria`) e dê duplo clique em `INSTALAR.cmd` dessa pasta.
+2. O instalador percebe que já existe um robô e pede **um nome curto** (ex.: `maria`). Esse robô ganha tarefas próprias no Agendador (`RoboLinkedIn-maria`), um ouvinte próprio e um **Chrome só dele**, separado do seu.
+3. Na etapa do Chrome, abre esse Chrome separado na tela de login do LinkedIn. **A pessoa entra na conta dela** (senha e código de verificação). Se ela estiver longe, faça isso com ela por acesso remoto. A janela fecha sozinha quando o feed aparecer.
+4. Nas etapas do Telegram e do Apify, use o **bot e a conta dela**. Na hora de mandar "oi" ao bot, é ela quem manda, do celular dela.
+5. A personalização acontece no Telegram dela, como de costume.
+
+Bom saber:
+- No horário de conectar, o Chrome desse robô abre minimizado por cerca de 1 minuto, lê as páginas de busca e fecha. Ele nunca clica nem digita.
+- A IA usa o plano Claude de quem está logado neste PC.
+- Se o LinkedIn dela pedir login de novo, o bot avisa. Basta dar duplo clique em `ENTRAR-LINKEDIN.cmd` na pasta dela.
+- O LinkedIn procura navegadores controlados por programa. O robô lê poucas páginas por dia e devagar, mas existe algum risco de a conta estranhar a automação.
+
 ## Segurança
 - O robô **nunca** clica, curte, comenta, convida, envia mensagem ou publica. Ele só lê páginas e manda sugestões para você.
 - Se o LinkedIn mostrar captcha ou aviso de limite, o robô **se pausa sozinho** e avisa no Telegram. Confira o LinkedIn no navegador e mande `/religar` depois.

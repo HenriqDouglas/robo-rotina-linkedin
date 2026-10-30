@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.1.0 · 2026-10-30
+- Segundo robô no mesmo computador: o instalador separa tarefas, ouvinte e usa um Chrome só desse robô, com o LinkedIn da outra pessoa
+- Novo ENTRAR-LINKEDIN.cmd para refazer o login nesse Chrome
+
 ## 1.0.3 · 2026-10-30
 - Se o PC estiver desligado ou dormindo no horário, o robô roda assim que você ligar (no máximo uma vez por dia por momento)
 - Funciona também na bateria
